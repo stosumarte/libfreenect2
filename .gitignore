@@ -159,3 +159,6 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+
+# FreenectTD build (build_freenecttd.sh)
+build-freenecttd/
