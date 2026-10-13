@@ -1054,9 +1054,11 @@ bool Freenect2DeviceImpl::close()
    * See https://github.com/OpenKinect/libfreenect2/issues/539
    *
    * Shut down Kinect explicitly on Mac and wait a fixed time.
+   * If the command fails, the Kinect is already gone (unplugged, or dropped off
+   * USB by a hub) and there's nothing to wait for.
    */
-  command_tx_.execute(ShutdownCommand(nextCommandSeq()), result);
-  libfreenect2::this_thread::sleep_for(libfreenect2::chrono::milliseconds(4*1000));
+  if (command_tx_.execute(ShutdownCommand(nextCommandSeq()), result))
+    libfreenect2::this_thread::sleep_for(libfreenect2::chrono::milliseconds(4*1000));
 #endif
 
   if(pipeline_->getRgbPacketProcessor() != 0)
