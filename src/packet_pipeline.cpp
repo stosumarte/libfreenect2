@@ -32,6 +32,7 @@
 #include <libfreenect2/rgb_packet_stream_parser.h>
 #include <libfreenect2/depth_packet_stream_parser.h>
 #include <libfreenect2/protocol/response.h>
+#include <libfreenect2/logging.h>
 
 namespace libfreenect2
 {
@@ -177,6 +178,22 @@ CudaKdePacketPipeline::CudaKdePacketPipeline(const int deviceId) : deviceId(devi
 
 CudaPacketPipeline::~CudaPacketPipeline() { }
 #endif // LIBFREENECT2_WITH_CUDA_SUPPORT
+
+#ifdef LIBFREENECT2_WITH_METAL_SUPPORT
+MetalPacketPipeline::MetalPacketPipeline(const int deviceId) : deviceId(deviceId)
+{
+  DepthPacketProcessor *depth = new MetalDepthPacketProcessor(deviceId);
+  if (!static_cast<MetalDepthPacketProcessor *>(depth)->good())
+  {
+    LOG_WARNING << "Metal depth processing is unavailable, using the CPU instead";
+    delete depth;
+    depth = new CpuDepthPacketProcessor();
+  }
+  comp_->initialize(getDefaultRgbPacketProcessor(), depth);
+}
+
+MetalPacketPipeline::~MetalPacketPipeline() { }
+#endif // LIBFREENECT2_WITH_METAL_SUPPORT
 
 DumpPacketPipeline::DumpPacketPipeline()
 {

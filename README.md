@@ -1,5 +1,10 @@
 # libfreenect2
 
+> **This is the [FreenectTD](https://github.com/stosumarte/FreenectTD) fork of [OpenKinect/libfreenect2](https://github.com/OpenKinect/libfreenect2).**
+> It adds a Metal depth pipeline (`MetalPacketPipeline`, macOS), ported by Harold Martin in
+> [hbmartin/libfreenect2-metal](https://github.com/hbmartin/libfreenect2-metal) (at `600cef5`). Only that pipeline is taken
+> from it; everything else is upstream.
+
 ## Table of Contents
 
 * [Description](README.md#description)

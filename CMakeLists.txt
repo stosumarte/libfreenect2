@@ -36,6 +36,7 @@ OPTION(BUILD_EXAMPLES "Build examples" ON)
 OPTION(BUILD_OPENNI2_DRIVER "Build OpenNI2 driver" ON)
 OPTION(ENABLE_CXX11 "Enable C++11 support" OFF)
 OPTION(ENABLE_OPENCL "Enable OpenCL support" ON)
+OPTION(ENABLE_METAL "Enable Metal support (macOS)" ON)
 OPTION(ENABLE_CUDA "Enable CUDA support" ON)
 OPTION(ENABLE_OPENGL "Enable OpenGL support" ON)
 OPTION(ENABLE_VAAPI "Enable VA-API support" ON)
@@ -336,6 +337,65 @@ IF(ENABLE_OPENCL)
     ENDIF()
   ENDIF(OpenCL_FOUND)
 ENDIF(ENABLE_OPENCL)
+
+SET(HAVE_Metal disabled)
+IF(APPLE AND ENABLE_METAL)
+  SET(HAVE_Metal no)
+
+  # The Metal shader compiler ships with full Xcode only, not the Command Line Tools
+  # (and since Xcode 26 only once its Metal Toolchain component is downloaded), so run it
+  # instead of just locating it.
+  EXECUTE_PROCESS(
+    COMMAND xcrun -sdk macosx metal --version
+    RESULT_VARIABLE METAL_COMPILER_RESULT
+    OUTPUT_QUIET
+    ERROR_QUIET
+  )
+  IF(METAL_COMPILER_RESULT EQUAL 0)
+    SET(METAL_SOURCE "${MY_DIR}/src/metal_depth_packet_processor.metal")
+    SET(METAL_AIR "${PROJECT_BINARY_DIR}/metal_depth_packet_processor.air")
+    SET(METAL_LIB "${PROJECT_BINARY_DIR}/metal_depth_packet_processor.metallib")
+
+    ADD_CUSTOM_COMMAND(
+      OUTPUT ${METAL_AIR}
+      COMMAND xcrun -sdk macosx metal -c ${METAL_SOURCE} -o ${METAL_AIR}
+      DEPENDS ${METAL_SOURCE}
+      COMMENT "Compiling Metal shader"
+      VERBATIM
+    )
+    ADD_CUSTOM_COMMAND(
+      OUTPUT ${METAL_LIB}
+      COMMAND xcrun -sdk macosx metallib ${METAL_AIR} -o ${METAL_LIB}
+      DEPENDS ${METAL_AIR}
+      COMMENT "Linking Metal library"
+      VERBATIM
+    )
+
+    SET(LIBFREENECT2_WITH_METAL_SUPPORT 1)
+    SET(HAVE_Metal yes)
+
+    LIST(APPEND SOURCES
+      src/metal_depth_packet_processor.mm
+    )
+
+    LIST(APPEND LIBRARIES
+      "-framework Metal"
+      "-framework Foundation"
+    )
+
+    # Embedded like the OpenCL kernels, so nothing has to be found at runtime
+    LIST(APPEND RESOURCES
+      ${METAL_LIB}
+    )
+
+    # The processor releases its Metal objects by setting them to nil, which needs ARC
+    SET_SOURCE_FILES_PROPERTIES(src/metal_depth_packet_processor.mm
+      PROPERTIES COMPILE_FLAGS "-x objective-c++ -fobjc-arc"
+    )
+  ELSE()
+    MESSAGE(STATUS "Metal shader compiler not usable (needs full Xcode; on Xcode 26+ also 'xcodebuild -downloadComponent MetalToolchain'), Metal disabled")
+  ENDIF()
+ENDIF(APPLE AND ENABLE_METAL)
 
 SET(HAVE_CUDA disabled)
 IF(ENABLE_CUDA)

@@ -708,6 +708,14 @@ void MetalDepthPacketProcessor::setConfiguration(const libfreenect2::DepthPacket
   impl_->params_need_upload = true;
 }
 
+/** One uint16 p0 value; the response is a packed struct, so copy it out instead of an unaligned read. */
+static uint16_t readP0TableValue(const unsigned char *buffer, size_t table_offset, size_t value_index)
+{
+  uint16_t value;
+  std::memcpy(&value, buffer + table_offset + value_index * sizeof(value), sizeof(value));
+  return value;
+}
+
 void MetalDepthPacketProcessor::loadP0TablesFromCommandResponse(unsigned char *buffer,
                                                                  size_t buffer_length)
 {
@@ -733,11 +741,11 @@ void MetalDepthPacketProcessor::loadP0TablesFromCommandResponse(unsigned char *b
     for(int c = 0; c < 512; ++c, it += 4)
     {
       const size_t index = static_cast<size_t>(r * 512 + c);
-      it[0] = -((float)libfreenect2::protocol::readP0TableValue(
+      it[0] = -((float)readP0TableValue(
           buffer, offsetof(libfreenect2::protocol::P0TablesResponse, p0table0), index)) * 0.000031f * (float)M_PI;
-      it[1] = -((float)libfreenect2::protocol::readP0TableValue(
+      it[1] = -((float)readP0TableValue(
           buffer, offsetof(libfreenect2::protocol::P0TablesResponse, p0table1), index)) * 0.000031f * (float)M_PI;
-      it[2] = -((float)libfreenect2::protocol::readP0TableValue(
+      it[2] = -((float)readP0TableValue(
           buffer, offsetof(libfreenect2::protocol::P0TablesResponse, p0table2), index)) * 0.000031f * (float)M_PI;
       it[3] = 0.0f;
     }
@@ -785,8 +793,6 @@ void MetalDepthPacketProcessor::process(const DepthPacket &packet)
 
   impl_->ir_frame->timestamp = packet.timestamp;
   impl_->depth_frame->timestamp = packet.timestamp;
-  impl_->ir_frame->arrival_timestamp_us = packet.arrival_timestamp_us;
-  impl_->depth_frame->arrival_timestamp_us = packet.arrival_timestamp_us;
   impl_->ir_frame->sequence = packet.sequence;
   impl_->depth_frame->sequence = packet.sequence;
 
