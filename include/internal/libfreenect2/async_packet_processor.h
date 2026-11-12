@@ -59,7 +59,12 @@ public:
 
   virtual ~AsyncPacketProcessor()
   {
-    shutdown_ = true;
+    {
+      // Under the mutex: otherwise the thread can check shutdown_, miss this
+      // notify before it starts waiting, and wait forever
+      libfreenect2::lock_guard l(packet_mutex_);
+      shutdown_ = true;
+    }
     packet_condition_.notify_one();
 
     thread_.join();
